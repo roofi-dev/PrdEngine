@@ -3,12 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Download, Edit3, Eye, LayoutDashboard, Share2 } from "lucide-react";
-import { downloadMarkdown } from "@/lib/prd-utils";
+import { Input } from "@/components/ui/input";
+import { Download, Edit3, Eye, Share2, Sparkles, Loader2 } from "lucide-react";
+import { downloadMarkdown, formatPrdToMarkdown, parseMarkdownToSections } from "@/lib/prd-utils";
 import { PhasePlanner } from "./PhasePlanner";
 import { GeneratePrdFromConceptOutput } from "@/ai/flows/generate-prd-from-concept";
-import { parseMarkdownToSections } from "@/lib/prd-utils";
+import { revisePrd } from "@/ai/flows/revise-prd-flow";
+import { useToast } from "@/hooks/use-toast";
 
 interface PRDEditorProps {
   initialContent: string;
@@ -17,6 +18,9 @@ interface PRDEditorProps {
 export function PRDEditor({ initialContent }: PRDEditorProps) {
   const [markdown, setMarkdown] = useState(initialContent);
   const [sections, setSections] = useState<Partial<GeneratePrdFromConceptOutput>>({});
+  const [revisionPrompt, setRevisionPrompt] = useState('');
+  const [isRevising, setIsRevising] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     setSections(parseMarkdownToSections(markdown));
@@ -24,6 +28,35 @@ export function PRDEditor({ initialContent }: PRDEditorProps) {
 
   const handleExport = () => {
     downloadMarkdown(markdown);
+  };
+
+  const handleRevise = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!revisionPrompt.trim() || isRevising) return;
+
+    setIsRevising(true);
+    try {
+      const result = await revisePrd({
+        currentPrdMarkdown: markdown,
+        revisionInstructions: revisionPrompt
+      });
+      const newMarkdown = formatPrdToMarkdown(result);
+      setMarkdown(newMarkdown);
+      setRevisionPrompt('');
+      toast({
+        title: "PRD Revised",
+        description: "Your document has been updated based on your instructions.",
+      });
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: "destructive",
+        title: "Revision Failed",
+        description: "Could not apply revisions. Please try again.",
+      });
+    } finally {
+      setIsRevising(false);
+    }
   };
 
   return (
@@ -41,6 +74,39 @@ export function PRDEditor({ initialContent }: PRDEditorProps) {
             <Download className="w-4 h-4" /> Export .md
           </Button>
         </div>
+      </div>
+
+      {/* AI Revision Tool */}
+      <div className="mb-8 p-4 bg-primary/5 border border-primary/20 rounded-2xl">
+        <form onSubmit={handleRevise} className="flex gap-3">
+          <div className="relative flex-grow">
+            <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
+            <Input 
+              placeholder="Ask AI to revise... e.g., 'Add a section for security risks' or 'Make the tech stack more focused on serverless'"
+              value={revisionPrompt}
+              onChange={(e) => setRevisionPrompt(e.target.value)}
+              className="pl-10 bg-background border-primary/20 focus:border-primary rounded-xl"
+              disabled={isRevising}
+            />
+          </div>
+          <Button 
+            type="submit" 
+            disabled={isRevising || !revisionPrompt.trim()}
+            className="bg-primary hover:bg-primary/90 rounded-xl gap-2 min-w-[120px]"
+          >
+            {isRevising ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Revising...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4" />
+                Revise
+              </>
+            )}
+          </Button>
+        </form>
       </div>
 
       <PhasePlanner phasesText={sections.phases || ""} />

@@ -4,27 +4,17 @@
  *               from a simple app concept.
  *
  * - generatePrdFromConcept - A function that handles the PRD generation process.
- * - GeneratePrdFromConceptInput - The input type for the generatePrdFromConcept function.
- * - GeneratePrdFromConceptOutput - The return type for the generatePrdFromConcept function.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
+import { 
+  GeneratePrdFromConceptInputSchema, 
+  GeneratePrdFromConceptOutputSchema 
+} from '../schemas/prd';
 
-// Input Schema
-const GeneratePrdFromConceptInputSchema = z.object({
-  appConcept: z.string().describe('A simple description of the application concept.'),
-});
+// Export Types only (Types are stripped during build and don't violate "use server")
 export type GeneratePrdFromConceptInput = z.infer<typeof GeneratePrdFromConceptInputSchema>;
-
-// Output Schema
-const GeneratePrdFromConceptOutputSchema = z.object({
-  overview: z.string().describe('A brief overview of the product, including target users, problem solved, and value proposition. (~3 lines)'),
-  techStack: z.string().describe('Details about the technology stack (frameworks, database, payment, hosting). (~5 lines)'),
-  features: z.string().describe('A list of features per module, with MVP features marked. (~15 lines)'),
-  dataModel: z.string().describe('Description of the main data tables, key columns, and relationships. (~10 lines)'),
-  phases: z.string().describe('A phased development plan (e.g., Phase 1-4). (~8 lines)'),
-});
 export type GeneratePrdFromConceptOutput = z.infer<typeof GeneratePrdFromConceptOutputSchema>;
 
 // Wrapper function to call the flow
