@@ -3,12 +3,17 @@
 import React, { useState } from 'react';
 import { IntakeForm } from "@/components/IntakeForm";
 import { PRDEditor } from "@/components/PRDEditor";
-import { Cpu, Terminal, FileText, Settings, LogOut, Search } from "lucide-react";
+import { Cpu, Terminal, FileText, Settings, LogOut, Search, User, LayoutDashboard, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth-context";
+import { createClient } from "@/lib/supabase";
+import Link from 'next/link';
 
 export default function Home() {
   const [generatedMd, setGeneratedMd] = useState<string | null>(null);
   const [activeLanguage, setActiveLanguage] = useState<'Indonesian' | 'English'>('English');
+  const { user, isAdmin, loading } = useAuth();
+  const supabase = createClient();
 
   const handleGenerated = (md: string, lang: 'Indonesian' | 'English') => {
     setGeneratedMd(md);
@@ -16,6 +21,11 @@ export default function Home() {
   };
 
   const reset = () => setGeneratedMd(null);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.reload();
+  };
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
@@ -38,12 +48,41 @@ export default function Home() {
           <Button variant="ghost" size="icon" className="hidden sm:flex">
             <Search className="w-4 h-4" />
           </Button>
-          <Button variant="outline" className="hidden sm:flex rounded-xl font-headline font-semibold">
-            Sign In
-          </Button>
-          <Button className="bg-primary hover:bg-primary/90 rounded-xl font-headline font-bold">
-            Get Pro
-          </Button>
+
+          {loading ? (
+            <div className="w-20 h-8 animate-pulse bg-muted rounded-xl" />
+          ) : user ? (
+            <div className="flex items-center gap-2">
+              {isAdmin && (
+                <Link href="/admin">
+                  <Button variant="outline" size="sm" className="hidden sm:flex rounded-xl font-headline font-semibold gap-2 border-primary/50 text-primary">
+                    <ShieldCheck className="w-4 h-4" /> Admin
+                  </Button>
+                </Link>
+              )}
+              <Link href="/dashboard">
+                <Button variant="outline" size="sm" className="hidden sm:flex rounded-xl font-headline font-semibold gap-2">
+                  <LayoutDashboard className="w-4 h-4" /> Dashboard
+                </Button>
+              </Link>
+              <Button variant="ghost" size="icon" onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
+                <LogOut className="w-4 h-4" />
+              </Button>
+            </div>
+          ) : (
+            <>
+              <Link href="/login">
+                <Button variant="outline" className="hidden sm:flex rounded-xl font-headline font-semibold">
+                  Sign In
+                </Button>
+              </Link>
+              <Link href="/register">
+                <Button className="bg-primary hover:bg-primary/90 rounded-xl font-headline font-bold">
+                  Get Pro
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
       </nav>
 
