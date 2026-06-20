@@ -5,13 +5,14 @@ import { CalendarDays, CheckCircle2, Circle, Layout, Rocket } from "lucide-react
 
 interface PhasePlannerProps {
   phasesText: string;
+  language?: 'Indonesian' | 'English';
 }
 
-export function PhasePlanner({ phasesText }: PhasePlannerProps) {
+export function PhasePlanner({ phasesText, language = 'English' }: PhasePlannerProps) {
   // Simple heuristic parsing of phases
   const phaseItems = phasesText
     .split(/\n/)
-    .filter(line => line.toLowerCase().includes('phase') || line.match(/^\d\./))
+    .filter(line => line.toLowerCase().includes('phase') || line.toLowerCase().includes('tahap') || line.match(/^\d\./))
     .slice(0, 4);
 
   const icons = [
@@ -30,7 +31,7 @@ export function PhasePlanner({ phasesText }: PhasePlannerProps) {
             <div className="flex items-center gap-2 mb-3">
               {icons[idx] || <CalendarDays className="w-5 h-5 text-primary" />}
               <Badge variant="outline" className="text-xs uppercase tracking-wider font-headline">
-                Stage {idx + 1}
+                {language === 'Indonesian' ? "Tahap" : "Stage"} {idx + 1}
               </Badge>
             </div>
             <p className="text-sm text-foreground/80 leading-snug line-clamp-3 font-medium">
@@ -41,7 +42,9 @@ export function PhasePlanner({ phasesText }: PhasePlannerProps) {
       ))}
       {phaseItems.length === 0 && (
         <div className="col-span-full py-12 text-center text-muted-foreground border-2 border-dashed rounded-xl">
-          Visual phase summary will appear here once generated.
+          {language === 'Indonesian' 
+            ? "Ringkasan fase visual akan muncul di sini setelah dibuat." 
+            : "Visual phase summary will appear here once generated."}
         </div>
       )}
     </div>

@@ -8,10 +8,11 @@ import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { GeneratePrdFromConceptOutputSchema } from '../schemas/prd';
 
-// Input Schema for Revision (Internal only, not exported)
+// Input Schema for Revision
 const RevisePrdInputSchema = z.object({
   currentPrdMarkdown: z.string().describe('The current content of the PRD in markdown format.'),
   revisionInstructions: z.string().describe('User instructions on what to change or improve.'),
+  language: z.enum(['Indonesian', 'English']).default('English').describe('The language to maintain/use for the PRD.'),
 });
 
 export type RevisePrdInput = z.infer<typeof RevisePrdInputSchema>;
@@ -27,6 +28,8 @@ const revisePrdPrompt = ai.definePrompt({
   output: { schema: GeneratePrdFromConceptOutputSchema },
   prompt: `You are an expert product manager assistant.
 Your task is to REVISE an existing Product Requirements Document (PRD) based on specific instructions from the user.
+
+CRITICAL: You MUST maintain or use the following language for all generated content: {{{language}}}.
 
 Current PRD Content:
 {{{currentPrdMarkdown}}}

@@ -8,6 +8,12 @@ import { Button } from "@/components/ui/button";
 
 export default function Home() {
   const [generatedMd, setGeneratedMd] = useState<string | null>(null);
+  const [activeLanguage, setActiveLanguage] = useState<'Indonesian' | 'English'>('English');
+
+  const handleGenerated = (md: string, lang: 'Indonesian' | 'English') => {
+    setGeneratedMd(md);
+    setActiveLanguage(lang);
+  };
 
   const reset = () => setGeneratedMd(null);
 
@@ -48,18 +54,20 @@ export default function Home() {
         <div className="absolute bottom-0 right-0 w-96 h-96 bg-accent/5 blur-[100px] rounded-full -z-10" />
 
         {!generatedMd ? (
-          <IntakeForm onGenerated={setGeneratedMd} />
+          <IntakeForm onGenerated={handleGenerated} />
         ) : (
           <div className="w-full">
              <div className="w-full bg-secondary/10 border-b py-2 px-6 flex items-center justify-between">
                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground" onClick={reset}>
-                 ← New Document
+                 {activeLanguage === 'Indonesian' ? "← Dokumen Baru" : "← New Document"}
                </Button>
                <div className="flex gap-2">
-                 <span className="text-[10px] uppercase tracking-widest font-headline font-bold text-primary px-2 py-0.5 bg-primary/10 rounded">Auto-Saved</span>
+                 <span className="text-[10px] uppercase tracking-widest font-headline font-bold text-primary px-2 py-0.5 bg-primary/10 rounded">
+                   {activeLanguage === 'Indonesian' ? "Tersimpan Otomatis" : "Auto-Saved"}
+                 </span>
                </div>
              </div>
-             <PRDEditor initialContent={generatedMd} />
+             <PRDEditor initialContent={generatedMd} language={activeLanguage} />
           </div>
         )}
       </main>

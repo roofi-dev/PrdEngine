@@ -7,6 +7,7 @@ import { z } from 'genkit';
 
 export const GeneratePrdFromConceptInputSchema = z.object({
   appConcept: z.string().describe('A simple description of the application concept.'),
+  language: z.enum(['Indonesian', 'English']).default('English').describe('The language to generate the PRD in.'),
 });
 
 export const GeneratePrdFromConceptOutputSchema = z.object({

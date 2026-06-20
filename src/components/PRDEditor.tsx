@@ -13,9 +13,10 @@ import { useToast } from "@/hooks/use-toast";
 
 interface PRDEditorProps {
   initialContent: string;
+  language?: 'Indonesian' | 'English';
 }
 
-export function PRDEditor({ initialContent }: PRDEditorProps) {
+export function PRDEditor({ initialContent, language = 'English' }: PRDEditorProps) {
   const [markdown, setMarkdown] = useState(initialContent);
   const [sections, setSections] = useState<Partial<GeneratePrdFromConceptOutput>>({});
   const [revisionPrompt, setRevisionPrompt] = useState('');
@@ -38,21 +39,26 @@ export function PRDEditor({ initialContent }: PRDEditorProps) {
     try {
       const result = await revisePrd({
         currentPrdMarkdown: markdown,
-        revisionInstructions: revisionPrompt
+        revisionInstructions: revisionPrompt,
+        language: language
       });
       const newMarkdown = formatPrdToMarkdown(result);
       setMarkdown(newMarkdown);
       setRevisionPrompt('');
       toast({
-        title: "PRD Revised",
-        description: "Your document has been updated based on your instructions.",
+        title: language === 'Indonesian' ? "PRD Direvisi" : "PRD Revised",
+        description: language === 'Indonesian' 
+          ? "Dokumen Anda telah diperbarui berdasarkan instruksi." 
+          : "Your document has been updated based on your instructions.",
       });
     } catch (error) {
       console.error(error);
       toast({
         variant: "destructive",
-        title: "Revision Failed",
-        description: "Could not apply revisions. Please try again.",
+        title: language === 'Indonesian' ? "Revisi Gagal" : "Revision Failed",
+        description: language === 'Indonesian' 
+          ? "Tidak dapat menerapkan revisi. Silakan coba lagi." 
+          : "Could not apply revisions. Please try again.",
       });
     } finally {
       setIsRevising(false);
@@ -63,15 +69,21 @@ export function PRDEditor({ initialContent }: PRDEditorProps) {
     <div className="w-full max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
-          <h2 className="text-3xl font-headline font-bold text-foreground">Document Architect</h2>
-          <p className="text-muted-foreground">Refine your project requirements and development plan.</p>
+          <h2 className="text-3xl font-headline font-bold text-foreground">
+            {language === 'Indonesian' ? "Arsitek Dokumen" : "Document Architect"}
+          </h2>
+          <p className="text-muted-foreground">
+            {language === 'Indonesian' 
+              ? "Sempurnakan persyaratan proyek dan rencana pengembangan Anda." 
+              : "Refine your project requirements and development plan."}
+          </p>
         </div>
         <div className="flex gap-3">
           <Button variant="outline" size="sm" className="gap-2" onClick={() => {}}>
-            <Share2 className="w-4 h-4" /> Share
+            <Share2 className="w-4 h-4" /> {language === 'Indonesian' ? "Bagikan" : "Share"}
           </Button>
           <Button variant="default" size="sm" className="gap-2 bg-primary hover:bg-primary/90" onClick={handleExport}>
-            <Download className="w-4 h-4" /> Export .md
+            <Download className="w-4 h-4" /> {language === 'Indonesian' ? "Ekspor .md" : "Export .md"}
           </Button>
         </div>
       </div>
@@ -82,7 +94,9 @@ export function PRDEditor({ initialContent }: PRDEditorProps) {
           <div className="relative flex-grow">
             <Sparkles className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary" />
             <Input 
-              placeholder="Ask AI to revise... e.g., 'Add a section for security risks' or 'Make the tech stack more focused on serverless'"
+              placeholder={language === 'Indonesian' 
+                ? "Minta AI merevisi... misal, 'Tambahkan bagian risiko keamanan'" 
+                : "Ask AI to revise... e.g., 'Add a section for security risks'"}
               value={revisionPrompt}
               onChange={(e) => setRevisionPrompt(e.target.value)}
               className="pl-10 bg-background border-primary/20 focus:border-primary rounded-xl"
@@ -97,25 +111,25 @@ export function PRDEditor({ initialContent }: PRDEditorProps) {
             {isRevising ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Revising...
+                {language === 'Indonesian' ? "Merevisi..." : "Revising..."}
               </>
             ) : (
               <>
                 <Sparkles className="w-4 h-4" />
-                Revise
+                {language === 'Indonesian' ? "Revisi" : "Revise"}
               </>
             )}
           </Button>
         </form>
       </div>
 
-      <PhasePlanner phasesText={sections.phases || ""} />
+      <PhasePlanner phasesText={sections.phases || ""} language={language} />
 
       <div className="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-8 min-h-[600px]">
         {/* Editor Pane */}
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-2 text-primary font-headline font-semibold">
-            <Edit3 className="w-5 h-5" /> Markdown Source
+            <Edit3 className="w-5 h-5" /> {language === 'Indonesian' ? "Sumber Markdown" : "Markdown Source"}
           </div>
           <Textarea
             value={markdown}
@@ -128,7 +142,7 @@ export function PRDEditor({ initialContent }: PRDEditorProps) {
         {/* Preview Pane */}
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-2 text-accent font-headline font-semibold">
-            <Eye className="w-5 h-5" /> Live Preview
+            <Eye className="w-5 h-5" /> {language === 'Indonesian' ? "Pratinjau Langsung" : "Live Preview"}
           </div>
           <div className="flex-grow p-8 bg-card border border-border rounded-lg shadow-sm overflow-y-auto max-h-[600px] markdown-preview">
             <div dangerouslySetInnerHTML={{ __html: simpleMarkdownParser(markdown) }} />

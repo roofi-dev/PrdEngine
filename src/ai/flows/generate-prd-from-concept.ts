@@ -30,6 +30,8 @@ const generatePrdPrompt = ai.definePrompt({
   prompt: `You are an expert product manager assistant.
 Your task is to generate a structured Product Requirements Document (PRD) based on a provided app concept. The PRD must have five distinct sections: Overview, Tech Stack, Features, Data Model, and Phases.
 
+CRITICAL: You MUST generate all content in the following language: {{{language}}}.
+
 For each section, adhere to the specified content guidelines and estimated length. Your response should be a JSON object that strictly adheres to the provided schema.
 
 App Concept: {{{appConcept}}}
