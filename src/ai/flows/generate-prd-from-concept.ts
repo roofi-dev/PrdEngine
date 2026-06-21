@@ -54,10 +54,22 @@ const generatePrdFromConceptFlow = ai.defineFlow(
     outputSchema: GeneratePrdFromConceptOutputSchema,
   },
   async (input) => {
-    const { output } = await generatePrdPrompt(input);
-    if (!output) {
-      throw new Error('Failed to generate PRD output.');
+    try {
+      console.log('Starting PRD generation for concept:', input.appConcept.substring(0, 50) + '...');
+      
+      const { output } = await generatePrdPrompt(input);
+      
+      if (!output) {
+        console.error('Genkit output is empty');
+        throw new Error('Failed to generate PRD output: Output was empty');
+      }
+      
+      console.log('PRD generation successful');
+      return output;
+    } catch (error: any) {
+      console.error('Error in generatePrdFromConceptFlow:', error);
+      // Re-throw a cleaner error message for the UI
+      throw new Error(`AI Architect Error: ${error.message || 'Unknown error'}`);
     }
-    return output;
   }
 );
