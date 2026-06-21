@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Sparkles, ArrowRight, Loader2, Wand2, Globe } from "lucide-react";
-import { generatePrdFromConcept } from "@/ai/flows/generate-prd-from-concept";
 import { formatPrdToMarkdown } from "@/lib/prd-utils";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -25,10 +24,23 @@ export function IntakeForm({ onGenerated }: IntakeFormProps) {
 
     setIsLoading(true);
     try {
-      const result = await generatePrdFromConcept({ 
-        appConcept: concept,
-        language: language
+      const response = await fetch('/api/generate-prd', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          appConcept: concept,
+          language: language,
+        }),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate PRD');
+      }
+
+      const result = await response.json();
       const md = formatPrdToMarkdown(result);
       onGenerated(md, language);
       toast({
