@@ -47,12 +47,12 @@ export function IntakeForm({ onGenerated }: IntakeFormProps) {
         title: language === 'Indonesian' ? "PRD Berhasil Dibuat" : "PRD Generated Successfully",
         description: language === 'Indonesian' ? "Arsitektur Anda siap ditinjau." : "Your architecture is ready for review.",
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
       toast({
         variant: "destructive",
         title: language === 'Indonesian' ? "Gagal Membuat" : "Generation Failed",
-        description: language === 'Indonesian' ? "Terjadi kesalahan pada arsitek. Silakan coba lagi." : "The architect encountered an error. Please try again.",
+        description: error.message || (language === 'Indonesian' ? "Terjadi kesalahan pada arsitek. Silakan coba lagi." : "The architect encountered an error. Please try again."),
       });
     } finally {
       setIsLoading(false);
