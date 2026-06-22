@@ -1,0 +1,11 @@
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[functions]
+  included_files = ["src/ai/flows/**/*.ts", "src/ai/schemas/**/*.ts"]
+  external_node_modules = ["@google/generative-ai"]
+  timeout = 26
