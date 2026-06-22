@@ -36,8 +36,15 @@ export function IntakeForm({ onGenerated }: IntakeFormProps) {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate PRD');
+        let errorMessage = 'Failed to generate PRD';
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch (e) {
+          // Jika bukan JSON, ambil teks statusnya
+          errorMessage = `Server Error: ${response.status} ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
