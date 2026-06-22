@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { generatePrdFromConcept } from '@/ai/flows/generate-prd-from-concept';
+import { generatePrdDirect } from '@/lib/ai-service';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,11 +15,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Panggil flow Genkit di sisi server
-    const result = await generatePrdFromConcept({
-      appConcept,
-      language: language || 'English',
-    });
+    // Gunakan service direct yang lebih stabil
+    const result = await generatePrdDirect(appConcept, language || 'English');
 
     return NextResponse.json(result);
   } catch (error: any) {
