@@ -1,20 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-export async function generatePrdDirect(appConcept: string, language: string) {
-  // Cari di beberapa kemungkinan nama variabel
-  const apiKey = 
-    process.env.GEMINI_API_KEY || 
-    process.env.GOOGLE_GENAI_API_KEY || 
-    process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
-    process.env.GOOGLE_API_KEY;
-  
-  console.log("AI Service: Checking API Key...");
-  if (!apiKey) {
-    console.error("AI Service: API Key MISSING! Checked: GEMINI_API_KEY, GOOGLE_GENAI_API_KEY, NEXT_PUBLIC_GEMINI_API_KEY");
-    throw new Error("API Key tidak terbaca oleh Netlify. Pastikan Anda sudah menambahkan GEMINI_API_KEY di Site Settings dan melakukan DEPLOY ULANG.");
-  }
-  console.log("AI Service: API Key found (starts with: " + apiKey.substring(0, 4) + ")");
-
+export async function generatePrdDirect(appConcept: string, language: string, apiKey: string) {
   const genAI = new GoogleGenerativeAI(apiKey);
   // Gunakan model yang paling cepat
   const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
