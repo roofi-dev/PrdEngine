@@ -1,9 +1,8 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export async function generatePrdDirect(appConcept: string, language: string, apiKey: string) {
-  // Gunakan versi v1 secara eksplisit untuk menghindari 404 di v1beta
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" }, { apiVersion: 'v1' });
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
   const prompt = `You are an expert product manager. Generate a PRD in JSON format.
 Language: ${language}
