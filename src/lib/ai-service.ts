@@ -2,7 +2,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export async function generatePrdDirect(appConcept: string, language: string, apiKey: string) {
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  // Menggunakan gemini-1.5-flash-latest yang lebih stabil untuk endpoint v1beta
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
   const prompt = `You are an expert product manager. Generate a PRD in JSON format.
 Language: ${language}
@@ -30,6 +31,10 @@ Do not include any preamble, markdown formatting, or triple backticks. Just the 
     });
 
     const response = await result.response;
+    if (!response) {
+      throw new Error("No response from AI");
+    }
+    
     let text = response.text();
     
     // Pembersihan JSON yang lebih kuat
@@ -42,9 +47,19 @@ Do not include any preamble, markdown formatting, or triple backticks. Just the 
       text = text.substring(jsonStart, jsonEnd + 1);
     }
 
-    return JSON.parse(text);
+    try {
+      return JSON.parse(text);
+    } catch (parseError) {
+      console.error("JSON Parse Error. Raw text:", text);
+      throw new Error("AI memberikan format yang salah. Silakan coba lagi.");
+    }
   } catch (error: any) {
     console.error("Gemini Direct Detailed Error:", error);
+    
+    if (error.message?.includes("404") || error.message?.includes("not found")) {
+      throw new Error("Model AI tidak ditemukan atau API Key tidak valid untuk model ini. Pastikan Anda menggunakan API Key dari Google AI Studio.");
+    }
+
     if (error.message?.includes("fetch failed")) {
       throw new Error("Koneksi ke AI terputus (Timeout). Silakan coba dengan deskripsi yang lebih singkat.");
     }
