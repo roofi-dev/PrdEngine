@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 export async function generatePrdDirect(appConcept: string, language: string, apiKey: string) {
   const genAI = new GoogleGenerativeAI(apiKey);
   // Gunakan model yang paling cepat
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
 
   const prompt = `You are an expert product manager. Generate a PRD in JSON format.
 Language: ${language}
