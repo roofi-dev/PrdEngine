@@ -1,9 +1,15 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export async function generatePrdDirect(appConcept: string, language: string, apiKey: string) {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  // Menggunakan gemini-1.5-flash-latest yang lebih stabil untuk endpoint v1beta
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+  // Trim API Key untuk memastikan tidak ada spasi/newline yang terbawa
+  const cleanApiKey = apiKey.trim();
+  const genAI = new GoogleGenerativeAI(cleanApiKey);
+  
+  // Memaksa menggunakan API v1 yang lebih stabil untuk model GA (General Availability)
+  const model = genAI.getGenerativeModel(
+    { model: "gemini-1.5-flash" },
+    { apiVersion: "v1" }
+  );
 
   const prompt = `You are an expert product manager. Generate a PRD in JSON format.
 Language: ${language}
