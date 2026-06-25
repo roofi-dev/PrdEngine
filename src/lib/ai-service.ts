@@ -27,6 +27,22 @@ function extractJson(text: string): string {
   return text;
 }
 
+function safeJsonParse<T>(text: string): T {
+  const cleaned = extractJson(text);
+  try {
+    return JSON.parse(cleaned) as T;
+  } catch {
+    const fixed = cleaned
+      .replace(/,\s*}/g, '}')
+      .replace(/,\s*]/g, ']')
+      .replace(/[\u201C\u201D]/g, '"')
+      .replace(/[\u2018\u2019]/g, "'")
+      .replace(/\\n/g, ' ')
+      .replace(/\t/g, ' ');
+    return JSON.parse(fixed) as T;
+  }
+}
+
 export async function generateClarifyingQuestions(
   appConcept: string,
   language: string,
@@ -76,14 +92,14 @@ Return ONLY a raw JSON object (no markdown, no backticks) with this exact struct
           topK: 40,
           topP: 0.95,
           maxOutputTokens: 2048,
+          responseMimeType: "application/json",
         },
       });
 
       const response = await result.response;
       if (!response) continue;
 
-      const text = extractJson(response.text());
-      const parsed = JSON.parse(text) as ClarifyingQuestionsResult;
+      const parsed = safeJsonParse<ClarifyingQuestionsResult>(response.text());
 
       if (!parsed.questions || !Array.isArray(parsed.questions) || parsed.questions.length === 0) {
         throw new Error("No questions returned from AI");
@@ -93,9 +109,11 @@ Return ONLY a raw JSON object (no markdown, no backticks) with this exact struct
     } catch (error: any) {
       console.error(`Clarifying questions failed with model ${modelName}:`, error.message);
       lastError = error;
-      if (!error.message?.includes("404") && !error.message?.includes("not found") && !error.message?.includes("403")) {
-        break;
+      const msg = error.message || '';
+      if (msg.includes("404") || msg.includes("not found") || msg.includes("403") || msg.includes("503") || msg.includes("500") || msg.includes("429") || msg.includes("overloaded") || msg.includes("Service Unavailable")) {
+        continue;
       }
+      break;
     }
   }
 
@@ -181,22 +199,22 @@ Return ONLY a JSON object with these EXACT keys (no markdown, no backticks):
           topK: 40,
           topP: 0.95,
           maxOutputTokens: 8192,
+          responseMimeType: "application/json",
         },
       });
 
       const response = await result.response;
       if (!response) continue;
       
-      const text = extractJson(response.text());
-
-      return JSON.parse(text);
+      return safeJsonParse<any>(response.text());
     } catch (error: any) {
       console.error(`Failed with model ${modelName}:`, error.message);
       lastError = error;
-      // Jika error bukan 404/not found (misal: 429 quota atau API key invalid), jangan coba model lain
-      if (!error.message?.includes("404") && !error.message?.includes("not found") && !error.message?.includes("403")) {
-        break;
+      const msg = error.message || '';
+      if (msg.includes("404") || msg.includes("not found") || msg.includes("403") || msg.includes("503") || msg.includes("500") || msg.includes("429") || msg.includes("overloaded") || msg.includes("Service Unavailable")) {
+        continue;
       }
+      break;
     }
   }
 
