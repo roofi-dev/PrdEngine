@@ -43,6 +43,28 @@ function safeJsonParse<T>(text: string): T {
   }
 }
 
+function normalizePrdResponse(data: any): any {
+  const fields = ['overview', 'techStack', 'features', 'dataModel', 'phases'];
+  const result: Record<string, string> = {};
+  for (const field of fields) {
+    const val = data?.[field];
+    if (val == null) {
+      result[field] = '';
+    } else if (typeof val === 'string') {
+      result[field] = val;
+    } else if (Array.isArray(val)) {
+      result[field] = val.map((item: any) =>
+        typeof item === 'string' ? item : JSON.stringify(item, null, 2)
+      ).join('\n');
+    } else if (typeof val === 'object') {
+      result[field] = JSON.stringify(val, null, 2);
+    } else {
+      result[field] = String(val);
+    }
+  }
+  return result;
+}
+
 export async function generateClarifyingQuestions(
   appConcept: string,
   language: string,
@@ -93,6 +115,34 @@ Return ONLY a raw JSON object (no markdown, no backticks) with this exact struct
           topP: 0.95,
           maxOutputTokens: 2048,
           responseMimeType: "application/json",
+          responseSchema: {
+            type: "object",
+            properties: {
+              questions: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    id: { type: "number" },
+                    question: { type: "string" },
+                    options: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          label: { type: "string" },
+                          text: { type: "string" },
+                        },
+                        required: ["label", "text"],
+                      },
+                    },
+                  },
+                  required: ["id", "question", "options"],
+                },
+              },
+            },
+            required: ["questions"],
+          } as any,
         },
       });
 
@@ -206,7 +256,8 @@ Return ONLY a JSON object with these EXACT keys (no markdown, no backticks):
       const response = await result.response;
       if (!response) continue;
       
-      return safeJsonParse<any>(response.text());
+      const parsed = safeJsonParse<any>(response.text());
+      return normalizePrdResponse(parsed);
     } catch (error: any) {
       console.error(`Failed with model ${modelName}:`, error.message);
       lastError = error;
