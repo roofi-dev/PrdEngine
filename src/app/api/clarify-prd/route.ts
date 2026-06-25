@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
-import { generatePrdDirect } from '@/lib/ai-service';
+import { generateClarifyingQuestions } from '@/lib/ai-service';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
-  // Ambil API Key di sini (Level Request)
-  const apiKey = 
-    process.env.GEMINI_API_KEY || 
-    process.env.GOOGLE_GENAI_API_KEY || 
+  const apiKey =
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_GENAI_API_KEY ||
     process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
     process.env.GOOGLE_API_KEY;
 
@@ -21,7 +20,7 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-    const { appConcept, language, clarifyingAnswers } = body;
+    const { appConcept, language } = body;
 
     if (!appConcept) {
       return NextResponse.json(
@@ -30,14 +29,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // Teruskan apiKey dan clarifyingAnswers ke service
-    const result = await generatePrdDirect(appConcept, language || 'English', apiKey, clarifyingAnswers);
+    const questions = await generateClarifyingQuestions(appConcept, language || 'English', apiKey);
 
-    return NextResponse.json(result);
+    return NextResponse.json({ questions });
   } catch (error: any) {
-    console.error('Error in API Route /api/generate-prd:', error);
+    console.error('Error in API Route /api/clarify-prd:', error);
     return NextResponse.json(
-      { error: error.message || 'An error occurred during PRD generation' },
+      { error: error.message || 'An error occurred during clarifying questions generation' },
       { status: 500 }
     );
   }
