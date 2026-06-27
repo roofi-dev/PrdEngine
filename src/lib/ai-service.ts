@@ -10,11 +10,42 @@ export interface ClarifyingQuestionsResult {
   questions: ClarifyingQuestion[];
 }
 
-const MODELS_TO_TRY = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest", "gemini-2.0-flash-lite"];
+const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-flash-latest", "gemini-2.0-flash-lite"];
+const GROQ_MODELS_QUESTIONS = ["gemma2-9b-it", "llama-3.1-8b-instant"];
+const GROQ_MODELS_PRD = ["llama-3.3-70b-versatile", "gemma2-9b-it"];
 
 function getGenAI(apiKey: string) {
   const cleanApiKey = apiKey.trim();
   return new GoogleGenerativeAI(cleanApiKey);
+}
+
+async function callGroq(
+  apiKey: string,
+  model: string,
+  prompt: string,
+  options: { temperature?: number; maxTokens?: number; jsonMode?: boolean }
+): Promise<string> {
+  const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey.trim()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      messages: [{ role: "user", content: prompt }],
+      temperature: options.temperature ?? 0.5,
+      max_tokens: options.maxTokens ?? 2048,
+      top_p: 0.95,
+      ...(options.jsonMode ? { response_format: { type: "json_object" } } : {}),
+    }),
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Groq API error (${res.status}): ${errText}`);
+  }
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content || "";
 }
 
 function extractJson(text: string): string {
@@ -53,6 +84,29 @@ function safeJsonParse<T>(text: string): T {
   }
 }
 
+function flattenToText(val: any, indent: string = ''): string {
+  if (val == null) return '';
+  if (typeof val === 'string') return val;
+  if (typeof val === 'number' || typeof val === 'boolean') return String(val);
+  if (Array.isArray(val)) {
+    return val.map((item, i) => {
+      if (typeof item === 'string') return `${indent}${i + 1}. ${item}`;
+      const flat = flattenToText(item, indent + '  ');
+      return `${indent}${i + 1}. ${flat}`;
+    }).join('\n');
+  }
+  if (typeof val === 'object') {
+    const entries = Object.entries(val).filter(([, v]) => v != null);
+    return entries.map(([k, v]) => {
+      if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
+        return `${indent}${k}: ${v}`;
+      }
+      return `${indent}${k}:\n${flattenToText(v, indent + '  ')}`;
+    }).join('\n');
+  }
+  return String(val);
+}
+
 function normalizePrdResponse(data: any): any {
   const fields = ['overview', 'techStack', 'features', 'dataModel', 'phases'];
   const result: Record<string, string> = {};
@@ -62,14 +116,8 @@ function normalizePrdResponse(data: any): any {
       result[field] = '';
     } else if (typeof val === 'string') {
       result[field] = val;
-    } else if (Array.isArray(val)) {
-      result[field] = val.map((item: any) =>
-        typeof item === 'string' ? item : JSON.stringify(item, null, 2)
-      ).join('\n');
-    } else if (typeof val === 'object') {
-      result[field] = JSON.stringify(val, null, 2);
     } else {
-      result[field] = String(val);
+      result[field] = flattenToText(val);
     }
   }
   return result;
@@ -78,19 +126,12 @@ function normalizePrdResponse(data: any): any {
 export async function generateClarifyingQuestions(
   appConcept: string,
   language: string,
-  apiKey: string
+  apiKey: string,
+  groqApiKey?: string
 ): Promise<ClarifyingQuestion[]> {
-  const genAI = getGenAI(apiKey);
   let lastError: any = null;
 
-  for (const modelName of MODELS_TO_TRY) {
-    try {
-      const model = genAI.getGenerativeModel(
-        { model: modelName },
-        { apiVersion: "v1beta" }
-      );
-
-      const prompt = `You are an expert product manager assistant. Your task is to analyze the given app concept and generate 3-5 clarifying questions that will help you write a more specific and unambiguous PRD.
+  const promptText = `You are an expert product manager assistant. Your task is to analyze the given app concept and generate 3-5 clarifying questions that will help you write a more specific and unambiguous PRD.
 
 Language for questions: ${language}
 App Concept: "${appConcept}"
@@ -117,8 +158,40 @@ Return ONLY a raw JSON object (no markdown, no backticks) with this exact struct
   ]
 }`;
 
+  // --- Try Groq first ---
+  if (groqApiKey && groqApiKey.trim()) {
+    for (const modelName of GROQ_MODELS_QUESTIONS) {
+      try {
+        const rawText = await callGroq(groqApiKey, modelName, promptText, {
+          temperature: 0.5,
+          maxTokens: 2048,
+          jsonMode: true,
+        });
+        const parsed = safeJsonParse<ClarifyingQuestionsResult>(rawText);
+        if (!parsed.questions || !Array.isArray(parsed.questions) || parsed.questions.length === 0) {
+          throw new Error("No questions returned from AI");
+        }
+        return parsed.questions;
+      } catch (error: any) {
+        console.error(`Groq clarifying questions failed with model ${modelName}:`, error.message);
+        lastError = error;
+        continue;
+      }
+    }
+  }
+
+  // --- Fallback to Gemini ---
+  const genAI = getGenAI(apiKey);
+
+  for (const modelName of GEMINI_MODELS) {
+    try {
+      const model = genAI.getGenerativeModel(
+        { model: modelName },
+        { apiVersion: "v1beta" }
+      );
+
       const result = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        contents: [{ role: "user", parts: [{ text: promptText }] }],
         generationConfig: {
           temperature: 0.5,
           topK: 40,
@@ -162,25 +235,16 @@ export async function generatePrdDirect(
   appConcept: string,
   language: string,
   apiKey: string,
-  clarifyingAnswers?: string
+  clarifyingAnswers?: string,
+  groqApiKey?: string
 ) {
-  // Trim API Key untuk memastikan tidak ada spasi/newline yang terbawa
-  const cleanApiKey = apiKey.trim();
-  const genAI = getGenAI(apiKey);
   let lastError: any = null;
 
-  for (const modelName of MODELS_TO_TRY) {
-    try {
-      const model = genAI.getGenerativeModel(
-        { model: modelName },
-        { apiVersion: "v1beta" }
-      );
+  const clarifyingContext = clarifyingAnswers
+    ? `\n\nClarifying Answers from the user (use these to make the PRD MORE SPECIFIC and DETAILED):\n${clarifyingAnswers}\n\nYou MUST incorporate these answers into the PRD. Do not ignore them.`
+    : '';
 
-      const clarifyingContext = clarifyingAnswers
-        ? `\n\nClarifying Answers from the user (use these to make the PRD MORE SPECIFIC and DETAILED):\n${clarifyingAnswers}\n\nYou MUST incorporate these answers into the PRD. Do not ignore them.`
-        : '';
-
-      const prompt = `You are an expert product manager assistant. Generate a detailed, specific, and unambiguous Product Requirements Document (PRD) in JSON format.
+  const promptText = `You are an expert product manager assistant. Generate a detailed, specific, and unambiguous Product Requirements Document (PRD) in JSON format.
 
 CRITICAL: You MUST generate ALL content in this language: ${language}
 
@@ -229,8 +293,37 @@ Return ONLY a JSON object with these EXACT keys (no markdown, no backticks):
   "phases": "..."
 }`;
 
+  // --- Try Groq first ---
+  if (groqApiKey && groqApiKey.trim()) {
+    for (const modelName of GROQ_MODELS_PRD) {
+      try {
+        const rawText = await callGroq(groqApiKey, modelName, promptText, {
+          temperature: 0.7,
+          maxTokens: 8192,
+          jsonMode: true,
+        });
+        const parsed = safeJsonParse<any>(rawText);
+        return normalizePrdResponse(parsed);
+      } catch (error: any) {
+        console.error(`Groq PRD failed with model ${modelName}:`, error.message);
+        lastError = error;
+        continue;
+      }
+    }
+  }
+
+  // --- Fallback to Gemini ---
+  const genAI = getGenAI(apiKey);
+
+  for (const modelName of GEMINI_MODELS) {
+    try {
+      const model = genAI.getGenerativeModel(
+        { model: modelName },
+        { apiVersion: "v1beta" }
+      );
+
       const result = await model.generateContent({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        contents: [{ role: "user", parts: [{ text: promptText }] }],
         generationConfig: {
           temperature: 0.7,
           topK: 40,

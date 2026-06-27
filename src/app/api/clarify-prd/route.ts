@@ -10,10 +10,12 @@ export async function POST(request: Request) {
     process.env.NEXT_PUBLIC_GEMINI_API_KEY ||
     process.env.GOOGLE_API_KEY;
 
-  if (!apiKey) {
+  const groqApiKey = process.env.GROQ_API_KEY;
+
+  if (!apiKey && !groqApiKey) {
     console.error("CRITICAL: No API Key found in process.env at Runtime");
     return NextResponse.json(
-      { error: "Netlify belum membaca API Key Anda. Langkah: 1. Masuk ke Site Settings > Environment Variables. 2. Pastikan GEMINI_API_KEY sudah benar. 3. Klik Deploys > Trigger Deploy > Deploy Site (WAJIB)." },
+      { error: "No API Key found. Set GROQ_API_KEY or GEMINI_API_KEY in your .env file." },
       { status: 500 }
     );
   }
@@ -29,7 +31,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const questions = await generateClarifyingQuestions(appConcept, language || 'English', apiKey);
+    const questions = await generateClarifyingQuestions(appConcept, language || 'English', apiKey || '', groqApiKey);
 
     return NextResponse.json({ questions });
   } catch (error: any) {
